@@ -424,12 +424,53 @@
   .eval-dragging { opacity:.4; }
   .eval-drag-over { border-top:2px solid var(--blue-400) !important; }
 
+  /* ── SAVE INDICATOR ── */
+  .save-indicator {
+    display:flex; align-items:center; gap:6px;
+    font-size:11px; font-weight:500;
+    padding:5px 10px; border-radius:20px;
+    transition:all .3s; white-space:nowrap;
+    border:1px solid transparent;
+  }
+  .save-indicator.saving {
+    background:var(--yellow-light); color:var(--yellow); border-color:#FAD7A0;
+  }
+  .save-indicator.saved {
+    background:var(--green-light); color:var(--green); border-color:#A9DFBF;
+  }
+  .save-indicator.idle { background:rgba(255,255,255,.12); color:rgba(255,255,255,.6); border-color:rgba(255,255,255,.15); }
+  .save-dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+  .save-dot.pulse { animation: pulse .8s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── CLEAR DATA BUTTON ── */
+  .clear-btn {
+    display:flex; align-items:center; gap:6px;
+    padding:8px 12px; border-radius:6px; width:100%;
+    background:none; border:1px solid var(--gray-200);
+    color:var(--gray-400); font-size:12px; font-weight:500;
+    cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif;
+    margin-top:auto;
+  }
+  .clear-btn:hover { background:var(--red-light); border-color:#F5B7B1; color:var(--red); }
+
+  /* ── TOAST ── */
+  .toast {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:var(--gray-800); color:#fff; font-size:13px; font-weight:500;
+    padding:10px 20px; border-radius:24px; box-shadow:0 4px 20px rgba(0,0,0,.2);
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s;
+    opacity:0; z-index:999; white-space:nowrap;
+  }
+  .toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+
   /* ════════════════════════════════
      RESPONSIVE – MOBILE
   ════════════════════════════════ */
   @media(max-width:700px) {
     .sidebar { display:none; }
     .header-summary { display:flex; }
+    #save-indicator { display:none; }
     header h1 { font-size:17px; }
     header p  { display:none; }
 
@@ -473,15 +514,21 @@
     <h1>Calculadora de Notas</h1>
     <p>Promedio ponderado por ramo y créditos</p>
   </div>
-  <!-- Shown only on mobile -->
-  <div class="header-summary">
-    <div class="header-stat">
-      <div class="hs-label">Créditos</div>
-      <div class="hs-value" id="m-credits">0</div>
+  <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+    <div class="save-indicator idle" id="save-indicator">
+      <span class="save-dot" id="save-dot"></span>
+      <span id="save-text">Guardado</span>
     </div>
-    <div class="header-stat">
-      <div class="hs-label">Promedio</div>
-      <div class="hs-value" id="m-prom">—</div>
+    <!-- Shown only on mobile -->
+    <div class="header-summary">
+      <div class="header-stat">
+        <div class="hs-label">Créditos</div>
+        <div class="hs-value" id="m-credits">0</div>
+      </div>
+      <div class="header-stat">
+        <div class="hs-label">Promedio</div>
+        <div class="hs-value" id="m-prom">—</div>
+      </div>
     </div>
   </div>
 </header>
@@ -507,6 +554,8 @@
     <div class="sidebar-list" id="sidebar-list">
       <div class="empty-state" style="padding:14px; font-size:12px;">Sin ramos aún</div>
     </div>
+
+    <button class="clear-btn" onclick="confirmClear()">🗑 Borrar todos los datos</button>
   </aside>
 
   <!-- MAIN -->
@@ -1038,6 +1087,174 @@ function fmt1(n)        { return (Math.round(n*10)/10).toFixed(1); }
 function clamp(n,a,b)   { return Math.max(a,Math.min(b,n)); }
 function gradeColor(n)  { return n>=55?'var(--green)':n>=40?'var(--yellow)':'var(--red)'; }
 function esc(s)         { return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+/* ══════════════════════════════════
+   AUTOSAVE  (localStorage)
+══════════════════════════════════ */
+const STORAGE_KEY = 'calculadora_notas_v1';
+let saveTimer = null;
+
+function scheduleSave() {
+  setSaveState('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 800);
+}
+
+function saveNow() {
+  try {
+    const data = {
+      ramoCounter, evalCounter, subCounter,
+      ramos: ramos.map(r => ({
+        id:      r.id,
+        name:    r.name,
+        credits: r.credits,
+        open:    r.open,
+        evals:   r.evals.map(ev => ({
+          id:    ev.id,
+          type:  ev.type,
+          name:  ev.name,
+          pct:   ev.pct,
+          grade: ev.grade,
+          subs:  ev.subs.map(s => ({ id:s.id, name:s.name, grade:s.grade, pct:s.pct }))
+        }))
+      }))
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    setSaveState('saved');
+  } catch(e) {
+    setSaveState('idle');
+    console.warn('No se pudo guardar:', e);
+  }
+}
+
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    ramoCounter = data.ramoCounter || 0;
+    evalCounter = data.evalCounter || 0;
+    subCounter  = data.subCounter  || 0;
+    ramos       = data.ramos       || [];
+    // Render everything
+    ramos.forEach(ramo => {
+      renderRamo(ramo);
+      ramo.evals.forEach(ev => {
+        renderEval(ramo.id, ev);
+        if (ev.type === 'grouped') {
+          ev.subs.forEach((sub, i) => {
+            const subList = document.getElementById(`subs-${ev.id}`);
+            const subEl   = document.createElement('div');
+            subEl.id      = `sub-${sub.id}`;
+            subEl.innerHTML = buildSubHTML(ramo.id, ev.id, sub, i+1);
+            subList.appendChild(subEl);
+            const pctEl = document.getElementById(`sub-pct-${sub.id}`);
+            if (pctEl) pctEl.textContent = sub.pct > 0 ? fmt1(sub.pct) : '—';
+          });
+          recalcSubPcts(ramo.id, ev.id);
+          updateGroupAvg(ramo.id, ev.id);
+        }
+        // restore pct input value
+        const pctEl = document.getElementById(`epct-${ev.id}`);
+        if (pctEl) pctEl.value = ev.pct || '';
+      });
+      recalcPcts(ramo.id);
+      updateRamoGrade(ramo.id);
+      refreshOrderBtns(ramo.id);
+      // restore open/close state
+      if (!ramo.open) {
+        document.getElementById(`ramo-body-${ramo.id}`)?.classList.remove('open');
+        document.getElementById(`ramo-toggle-${ramo.id}`)?.classList.remove('open');
+      }
+    });
+    updateSidebar();
+    setSaveState('saved');
+    return true;
+  } catch(e) {
+    console.warn('Error al cargar datos:', e);
+    return false;
+  }
+}
+
+function setSaveState(state) {
+  const ind  = document.getElementById('save-indicator');
+  const dot  = document.getElementById('save-dot');
+  const txt  = document.getElementById('save-text');
+  if (!ind) return;
+  ind.className = `save-indicator ${state}`;
+  if (state === 'saving') {
+    dot.classList.add('pulse');
+    txt.textContent = 'Guardando…';
+  } else if (state === 'saved') {
+    dot.classList.remove('pulse');
+    txt.textContent = 'Guardado';
+    // fade back to idle after 2s
+    setTimeout(() => setSaveState('idle'), 2000);
+  } else {
+    dot.classList.remove('pulse');
+    txt.textContent = 'Guardado';
+  }
+}
+
+function confirmClear() {
+  if (confirm('¿Borrar todos los datos guardados? Esta acción no se puede deshacer.')) {
+    localStorage.removeItem(STORAGE_KEY);
+    // Reset state
+    ramos = []; ramoCounter = 0; evalCounter = 0; subCounter = 0;
+    // Clear DOM
+    const container = document.getElementById('ramos-container');
+    const addBtn    = container.querySelector('.add-ramo-btn');
+    Array.from(container.children).forEach(c => { if (c !== addBtn) c.remove(); });
+    updateSidebar();
+    setSaveState('idle');
+    showToast('Datos borrados');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ── Patch all mutating functions to trigger autosave ── */
+const _origAddRamo      = addRamo;
+const _origDeleteRamo   = deleteRamo;
+const _origUpdateRamoName = updateRamoName;
+const _origUpdateCredits  = updateCredits;
+const _origAddEval      = addEval;
+const _origDeleteEval   = deleteEval;
+const _origMoveEval     = moveEval;
+const _origAddSubEval   = addSubEval;
+const _origDeleteSub    = deleteSub;
+const _origUpdateEvalField = updateEvalField;
+const _origUpdateEvalPct   = updateEvalPct;
+const _origUpdateEvalGrade = updateEvalGrade;
+const _origUpdateSubField  = updateSubField;
+const _origUpdateSubGrade  = updateSubGrade;
+
+addRamo = (...a)      => { _origAddRamo(...a);      scheduleSave(); };
+deleteRamo = (...a)   => { _origDeleteRamo(...a);   scheduleSave(); };
+updateRamoName = (...a)=> { _origUpdateRamoName(...a); scheduleSave(); };
+updateCredits = (...a) => { _origUpdateCredits(...a);  scheduleSave(); };
+addEval = (...a)      => { _origAddEval(...a);      scheduleSave(); };
+deleteEval = (...a)   => { _origDeleteEval(...a);   scheduleSave(); };
+moveEval = (...a)     => { _origMoveEval(...a);     scheduleSave(); };
+addSubEval = (...a)   => { _origAddSubEval(...a);   scheduleSave(); };
+deleteSub = (...a)    => { _origDeleteSub(...a);    scheduleSave(); };
+updateEvalField = (...a) => { _origUpdateEvalField(...a); scheduleSave(); };
+updateEvalPct   = (...a) => { _origUpdateEvalPct(...a);   scheduleSave(); };
+updateEvalGrade = (...a) => { _origUpdateEvalGrade(...a); scheduleSave(); };
+updateSubField  = (...a) => { _origUpdateSubField(...a);  scheduleSave(); };
+updateSubGrade  = (...a) => { _origUpdateSubGrade(...a);  scheduleSave(); };
+
+/* ── Load on startup ── */
+window.addEventListener('DOMContentLoaded', () => {
+  const loaded = loadSaved();
+  if (!loaded) setSaveState('idle');
+});
 </script>
+
+<div class="toast" id="toast"></div>
 </body>
 </html>
