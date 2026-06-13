@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Notas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue-50:  #EBF5FF;
+    --blue-100: #DBEEFF;
+    --blue-200: #B8DAFF;
+    --blue-300: #82BAED;
+    --blue-400: #4A90D9;
+    --blue-500: #2B7FCC;
+    --blue-600: #1A5FA0;
+    --blue-700: #0F4278;
+    --green:    #27AE60;
+    --green-light: #E8F8EF;
+    --red:      #E74C3C;
+    --red-light: #FDEDEC;
+    --yellow:   #F39C12;
+    --yellow-light: #FEF9E7;
+    --gray-50:  #F8FAFC;
+    --gray-100: #F1F5F9;
+    --gray-200: #E2E8F0;
+    --gray-300: #CBD5E1;
+    --gray-400: #94A3B8;
+    --gray-500: #64748B;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1E293B;
+    --white:    #FFFFFF;
+    --radius:   12px;
+    --radius-sm: 8px;
+    --shadow:   0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(43,127,204,.08);
+    --shadow-hover: 0 4px 12px rgba(43,127,204,.15), 0 8px 32px rgba(43,127,204,.10);
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(160deg, #EBF5FF 0%, #F0F8FF 50%, #E8F3FB 100%);
+    min-height: 100vh;
+    color: var(--gray-800);
+    font-size: 14px;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-500) 60%, var(--blue-400) 100%);
+    padding: 28px 40px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 2px 20px rgba(26,95,160,.30);
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content:'';
+    position:absolute; inset:0;
+    background: radial-gradient(ellipse 60% 120% at 90% 50%, rgba(255,255,255,.08) 0%, transparent 70%);
+    pointer-events:none;
+  }
+  .header-icon {
+    width:48px; height:48px;
+    background: rgba(255,255,255,.18);
+    border-radius: 14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px;
+    flex-shrink:0;
+    backdrop-filter: blur(6px);
+    border:1px solid rgba(255,255,255,.25);
+  }
+  header h1 { font-size:24px; font-weight:700; color:#fff; letter-spacing:-.3px; }
+  header p  { font-size:13px; color:rgba(255,255,255,.75); margin-top:2px; }
+  .header-right { margin-left:auto; }
+
+  /* LAYOUT */
+  .app { display:flex; gap:0; min-height: calc(100vh - 92px); }
+
+  /* SIDEBAR */
+  .sidebar {
+    width:260px; flex-shrink:0;
+    background: var(--white);
+    border-right:1px solid var(--gray-200);
+    padding:28px 20px;
+    display:flex; flex-direction:column; gap:20px;
+    position:sticky; top:0; height:calc(100vh - 92px); overflow-y:auto;
+    box-shadow: 2px 0 12px rgba(43,127,204,.06);
+  }
+  .sidebar-title {
+    font-size:11px; font-weight:600; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--gray-400); padding-bottom:8px;
+    border-bottom:1px solid var(--gray-100);
+  }
+
+  .stat-card {
+    background: var(--blue-50);
+    border:1px solid var(--blue-200);
+    border-radius: var(--radius-sm);
+    padding:14px 16px;
+  }
+  .stat-card .label { font-size:11px; font-weight:600; color:var(--blue-500); text-transform:uppercase; letter-spacing:.06em; }
+  .stat-card .value { font-size:32px; font-weight:700; color:var(--blue-600); line-height:1.1; margin-top:4px; font-variant-numeric: tabular-nums; }
+  .stat-card .sub   { font-size:12px; color:var(--blue-400); margin-top:2px; }
+
+  .prom-card {
+    border-radius: var(--radius-sm);
+    padding:14px 16px;
+    background: var(--gray-50);
+    border:1px solid var(--gray-200);
+  }
+  .prom-card .label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--gray-500); }
+  .prom-card .value { font-size:28px; font-weight:700; line-height:1.1; margin-top:4px; font-variant-numeric: tabular-nums; }
+  .prom-card.pass  { background: var(--green-light); border-color:#A9DFBF; }
+  .prom-card.pass .value  { color: var(--green); }
+  .prom-card.fail  { background: var(--red-light); border-color:#F5B7B1; }
+  .prom-card.fail .value  { color: var(--red); }
+  .prom-card.warn  { background: var(--yellow-light); border-color:#FAD7A0; }
+  .prom-card.warn .value  { color: var(--yellow); }
+
+  .sidebar-list { display:flex; flex-direction:column; gap:6px; }
+  .sidebar-ramo {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:8px 10px; border-radius:6px;
+    font-size:12px; cursor:pointer; transition:background .15s;
+    color:var(--gray-600);
+  }
+  .sidebar-ramo:hover { background:var(--blue-50); color:var(--blue-600); }
+  .sidebar-ramo .ramo-name { font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px; }
+  .sidebar-ramo .ramo-grade {
+    font-weight:700; font-size:13px; font-variant-numeric: tabular-nums;
+    padding:1px 6px; border-radius:4px;
+  }
+  .grade-pass { background:var(--green-light); color:var(--green); }
+  .grade-fail { background:var(--red-light); color:var(--red); }
+  .grade-warn { background:var(--yellow-light); color:var(--yellow); }
+  .grade-none { background:var(--gray-100); color:var(--gray-400); }
+
+  /* MAIN */
+  .main { flex:1; padding:32px 36px; display:flex; flex-direction:column; gap:20px; max-width:900px; }
+
+  .add-ramo-btn {
+    display:flex; align-items:center; gap:10px;
+    padding:14px 20px; border-radius: var(--radius);
+    background: var(--white);
+    border:2px dashed var(--blue-300);
+    color:var(--blue-500); font-size:14px; font-weight:600;
+    cursor:pointer; transition:all .2s;
+    font-family:'Inter',sans-serif;
+    width:100%;
+  }
+  .add-ramo-btn:hover { background:var(--blue-50); border-color:var(--blue-400); color:var(--blue-600); transform:translateY(-1px); }
+  .add-ramo-btn .plus { font-size:20px; line-height:1; }
+
+  /* RAMO CARD */
+  .ramo-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border:1px solid var(--gray-200);
+    overflow:hidden;
+    transition:box-shadow .2s;
+    position:relative;
+  }
+  .ramo-card:hover { box-shadow: var(--shadow-hover); }
+  .ramo-card::before {
+    content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
+    background: var(--blue-300);
+    transition:background .3s;
+  }
+  .ramo-card.pass-card::before { background: var(--green); }
+  .ramo-card.fail-card::before { background: var(--red); }
+  .ramo-card.warn-card::before { background: var(--yellow); }
+
+  .ramo-header {
+    display:flex; align-items:center; gap:12px;
+    padding:16px 20px 16px 24px;
+    cursor:pointer; user-select:none;
+    transition:background .15s;
+  }
+  .ramo-header:hover { background:var(--gray-50); }
+  .ramo-toggle { color:var(--gray-400); font-size:16px; transition:transform .2s; flex-shrink:0; }
+  .ramo-toggle.open { transform:rotate(90deg); }
+
+  .ramo-name-input {
+    flex:1; font-size:16px; font-weight:700; color:var(--gray-800);
+    border:none; outline:none; background:transparent;
+    font-family:'Inter',sans-serif;
+  }
+  .ramo-name-input::placeholder { color:var(--gray-300); }
+
+  .ramo-header-badges { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+
+  .credits-wrap { display:flex; align-items:center; gap:6px; }
+  .credits-label { font-size:11px; color:var(--gray-400); font-weight:500; }
+  .credits-input {
+    width:48px; text-align:center; font-weight:700; font-size:14px;
+    color:var(--blue-600); background:var(--blue-50); border:1px solid var(--blue-200);
+    border-radius:6px; padding:4px 6px; font-family:'Inter',sans-serif;
+    outline:none; transition:border .15s;
+    font-variant-numeric: tabular-nums;
+  }
+  .credits-input:focus { border-color:var(--blue-400); }
+
+  .ramo-grade-badge {
+    font-size:15px; font-weight:700; padding:4px 12px; border-radius:20px;
+    font-variant-numeric: tabular-nums; min-width:56px; text-align:center;
+    transition:all .3s;
+  }
+
+  .delete-ramo-btn {
+    background:none; border:none; cursor:pointer;
+    color:var(--gray-300); font-size:18px; line-height:1;
+    padding:4px; border-radius:4px; transition:color .15s, background .15s;
+    flex-shrink:0;
+  }
+  .delete-ramo-btn:hover { color:var(--red); background:var(--red-light); }
+
+  /* RAMO BODY */
+  .ramo-body {
+    padding:0 24px 20px;
+    display:none;
+  }
+  .ramo-body.open { display:block; }
+
+  /* PERCENT WARNING */
+  .pct-warning {
+    display:none; align-items:center; gap:6px;
+    padding:8px 12px; border-radius:6px; margin-bottom:12px;
+    font-size:12px; font-weight:500;
+  }
+  .pct-warning.show { display:flex; }
+  .pct-warning.over  { background:var(--red-light);    color:var(--red);    border:1px solid #F5B7B1; }
+  .pct-warning.under { background:var(--yellow-light); color:var(--yellow); border:1px solid #FAD7A0; }
+  .pct-warning.ok    { background:var(--green-light);  color:var(--green);  border:1px solid #A9DFBF; display:flex; }
+
+  /* EVALUATIONS TABLE */
+  .eval-list { display:flex; flex-direction:column; gap:8px; }
+
+  .eval-row {
+    display:flex; align-items:stretch; gap:0;
+    border-radius: var(--radius-sm);
+    border:1px solid var(--gray-200);
+    overflow:hidden;
+    background:var(--white);
+    transition:box-shadow .15s;
+  }
+  .eval-row:hover { box-shadow:0 2px 8px rgba(43,127,204,.10); }
+
+  .eval-type-bar {
+    width:5px; flex-shrink:0;
+    background: var(--blue-300);
+  }
+  .eval-type-bar.sub { background: var(--blue-200); }
+
+  .eval-content { flex:1; display:flex; align-items:center; gap:0; }
+
+  .eval-name-wrap { flex:1; padding:10px 12px; display:flex; align-items:center; gap:8px; }
+  .eval-indent { width:20px; flex-shrink:0; color:var(--gray-300); font-size:16px; }
+
+  .eval-name-input {
+    flex:1; border:none; outline:none; font-family:'Inter',sans-serif;
+    font-size:13px; font-weight:500; color:var(--gray-700); background:transparent;
+  }
+  .eval-name-input::placeholder { color:var(--gray-300); }
+  .eval-name-input.sub { font-weight:400; color:var(--gray-500); font-size:12px; }
+
+  .eval-pct-wrap {
+    display:flex; align-items:center; gap:4px;
+    padding:10px 12px; border-left:1px solid var(--gray-100);
+    min-width:90px;
+  }
+  .eval-pct-input {
+    width:44px; text-align:right; border:none; outline:none;
+    font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+    color:var(--blue-600); background:transparent;
+    font-variant-numeric: tabular-nums;
+  }
+  .eval-pct-input:read-only { color:var(--gray-400); }
+  .eval-pct-symbol { color:var(--gray-400); font-size:12px; font-weight:500; }
+
+  .eval-grade-wrap {
+    display:flex; align-items:center; gap:4px;
+    padding:10px 12px; border-left:1px solid var(--gray-100);
+    min-width:100px;
+  }
+  .grade-label { font-size:11px; color:var(--gray-400); white-space:nowrap; }
+  .eval-grade-input {
+    width:44px; text-align:center; border:none; outline:none;
+    font-family:'Inter',sans-serif; font-size:14px; font-weight:700;
+    color:var(--gray-700); background:transparent;
+    font-variant-numeric: tabular-nums;
+    border-bottom:2px solid var(--gray-200); transition:border .15s;
+  }
+  .eval-grade-input:focus { border-color:var(--blue-400); }
+  .eval-grade-input:read-only { color:var(--blue-500); border-bottom-color:transparent; font-size:13px; }
+  .eval-grade-computed { font-size:13px; font-weight:700; color:var(--blue-500); font-variant-numeric: tabular-nums; padding:2px 0; }
+
+  .eval-actions {
+    display:flex; align-items:center; gap:2px;
+    padding:6px 8px; border-left:1px solid var(--gray-100);
+  }
+  .eval-action-btn {
+    background:none; border:none; cursor:pointer;
+    color:var(--gray-300); font-size:16px; line-height:1;
+    width:26px; height:26px; border-radius:4px;
+    display:flex; align-items:center; justify-content:center;
+    transition:color .15s, background .15s;
+    font-family:'Inter',sans-serif;
+  }
+  .eval-action-btn:hover.del   { color:var(--red);     background:var(--red-light); }
+  .eval-action-btn:hover.add-s { color:var(--blue-500); background:var(--blue-50); }
+
+  /* SUB-ITEMS wrapper */
+  .sub-items { margin-top:4px; display:flex; flex-direction:column; gap:4px; padding-left:16px; }
+
+  /* ADD EVAL BUTTON */
+  .add-eval-btn {
+    display:flex; align-items:center; gap:8px;
+    margin-top:12px; padding:8px 12px; border-radius:6px;
+    background:none; border:1px dashed var(--gray-300);
+    color:var(--gray-400); font-size:12px; font-weight:500;
+    cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif;
+    width:100%;
+  }
+  .add-eval-btn:hover { border-color:var(--blue-300); color:var(--blue-500); background:var(--blue-50); }
+
+  /* EVAL TYPE SELECTOR */
+  .eval-type-row {
+    display:flex; gap:8px; flex-wrap:wrap;
+    padding:12px; background:var(--gray-50);
+    border-radius: var(--radius-sm); border:1px solid var(--gray-200);
+    align-items:center;
+  }
+  .eval-type-row span { font-size:12px; color:var(--gray-500); font-weight:500; white-space:nowrap; }
+  .type-btn {
+    padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600;
+    border:1px solid; cursor:pointer; transition:all .15s;
+    font-family:'Inter',sans-serif; white-space:nowrap;
+  }
+  .type-btn.simple  { border-color:var(--blue-300); color:var(--blue-500); background:var(--blue-50); }
+  .type-btn.simple:hover  { background:var(--blue-100); }
+  .type-btn.grouped { border-color:#9B59B6; color:#8E44AD; background:#F5EEF8; }
+  .type-btn.grouped:hover { background:#EBE0F5; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align:center; padding:28px 20px;
+    color:var(--gray-400); font-size:13px;
+    border:1px dashed var(--gray-200); border-radius:8px; margin:8px 0;
+  }
+  .empty-state .icon { font-size:28px; margin-bottom:8px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--gray-200); border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background:var(--gray-300); }
+
+  /* RESPONSIVE */
+  @media(max-width:768px){
+    .sidebar { display:none; }
+    .main { padding:20px 16px; }
+    header { padding:18px 20px; }
+  }
+
+  /* ANIMATION */
+  .ramo-card { animation: slideIn .25s ease; }
+  @keyframes slideIn {
+    from { opacity:0; transform:translateY(12px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .eval-row { animation: fadeIn .2s ease; }
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateX(-6px); }
+    to   { opacity:1; transform:translateX(0); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon">📚</div>
+  <div>
+    <h1>Calculadora de Notas</h1>
+    <p>Calcula tu promedio ponderado por ramo y créditos</p>
+  </div>
+</header>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-title">Resumen</div>
+
+    <div class="stat-card">
+      <div class="label">Créditos totales</div>
+      <div class="value" id="total-credits">0</div>
+      <div class="sub">créditos inscritos</div>
+    </div>
+
+    <div class="prom-card" id="prom-ponderado-card">
+      <div class="label">Promedio ponderado</div>
+      <div class="value" id="prom-ponderado">—</div>
+    </div>
+
+    <div class="sidebar-title" style="margin-top:4px;">Ramos</div>
+    <div class="sidebar-list" id="sidebar-list">
+      <div class="empty-state" style="padding:16px;">
+        <div>Sin ramos aún</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main" id="ramos-container">
+    <!-- cards injected here -->
+    <button class="add-ramo-btn" onclick="addRamo()">
+      <span class="plus">＋</span> Agregar ramo
+    </button>
+  </main>
+</div>
+
+<script>
+let ramos = [];
+let ramoCounter = 0;
+
+/* ─── RAMO ─── */
+function addRamo() {
+  const id = ++ramoCounter;
+  const ramo = { id, name: '', credits: 5, evals: [], open: true };
+  ramos.push(ramo);
+  renderRamo(ramo);
+  updateSidebar();
+}
+
+function deleteRamo(id) {
+  ramos = ramos.filter(r => r.id !== id);
+  document.getElementById(`ramo-${id}`)?.remove();
+  updateSidebar();
+}
+
+function toggleRamo(id) {
+  const ramo = ramos.find(r => r.id === id);
+  if (!ramo) return;
+  ramo.open = !ramo.open;
+  const body    = document.getElementById(`ramo-body-${id}`);
+  const toggle  = document.getElementById(`ramo-toggle-${id}`);
+  body.classList.toggle('open', ramo.open);
+  toggle.classList.toggle('open', ramo.open);
+}
+
+function renderRamo(ramo) {
+  const container = document.getElementById('ramos-container');
+  const addBtn    = container.querySelector('.add-ramo-btn');
+
+  const card = document.createElement('div');
+  card.className = 'ramo-card';
+  card.id = `ramo-${ramo.id}`;
+
+  card.innerHTML = `
+    <div class="ramo-header" onclick="toggleRamo(${ramo.id})">
+      <span class="ramo-toggle open" id="ramo-toggle-${ramo.id}">▶</span>
+      <input class="ramo-name-input" id="ramo-name-${ramo.id}"
+        placeholder="Nombre del ramo…"
+        value="${ramo.name}"
+        onclick="event.stopPropagation()"
+        oninput="updateRamoName(${ramo.id},this.value)">
+      <div class="ramo-header-badges" onclick="event.stopPropagation()">
+        <div class="credits-wrap">
+          <span class="credits-label">Créditos</span>
+          <input class="credits-input" type="number" min="1" max="30"
+            value="${ramo.credits}"
+            oninput="updateCredits(${ramo.id},this.value)">
+        </div>
+        <span class="ramo-grade-badge grade-none" id="ramo-badge-${ramo.id}">—</span>
+        <button class="delete-ramo-btn" onclick="deleteRamo(${ramo.id})" title="Eliminar ramo">✕</button>
+      </div>
+    </div>
+    <div class="ramo-body open" id="ramo-body-${ramo.id}">
+      <div class="pct-warning" id="pct-warn-${ramo.id}"></div>
+      <div class="eval-list" id="eval-list-${ramo.id}"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="add-eval-btn" onclick="addEval(${ramo.id},'simple')">
+          ＋ Evaluación simple
+        </button>
+        <button class="add-eval-btn" style="color:#8E44AD;border-color:#C39BD3;" onclick="addEval(${ramo.id},'grouped')">
+          ＋ Evaluación con subcontroles
+        </button>
+      </div>
+    </div>
+  `;
+
+  container.insertBefore(card, addBtn);
+  updateRamoGrade(ramo.id);
+}
+
+function updateRamoName(id, val) {
+  const r = ramos.find(r => r.id === id);
+  if (r) r.name = val;
+  updateSidebar();
+}
+
+function updateCredits(id, val) {
+  const r = ramos.find(r => r.id === id);
+  if (r) { r.credits = parseInt(val) || 0; updateSidebar(); }
+}
+
+/* ─── EVAL ─── */
+let evalCounter = 0;
+
+function addEval(ramoId, type) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  if (!ramo) return;
+
+  const eid = ++evalCounter;
+  const ev = { id: eid, type, name: '', pct: 0, grade: null, subs: [] };
+  ramo.evals.push(ev);
+  renderEval(ramoId, ev);
+  recalcPcts(ramoId);
+  updateRamoGrade(ramoId);
+}
+
+function deleteEval(ramoId, evalId) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  if (!ramo) return;
+  ramo.evals = ramo.evals.filter(e => e.id !== evalId);
+  document.getElementById(`eval-${evalId}`)?.remove();
+  recalcPcts(ramoId);
+  updateRamoGrade(ramoId);
+}
+
+function renderEval(ramoId, ev) {
+  const list = document.getElementById(`eval-list-${ramoId}`);
+  const wrap = document.createElement('div');
+  wrap.id = `eval-${ev.id}`;
+
+  if (ev.type === 'simple') {
+    wrap.innerHTML = buildSimpleEvalHTML(ramoId, ev);
+  } else {
+    wrap.innerHTML = buildGroupedEvalHTML(ramoId, ev);
+  }
+  list.appendChild(wrap);
+}
+
+function buildSimpleEvalHTML(ramoId, ev) {
+  return `
+    <div class="eval-row" id="eval-row-${ev.id}">
+      <div class="eval-type-bar"></div>
+      <div class="eval-content">
+        <div class="eval-name-wrap">
+          <input class="eval-name-input" placeholder="Nombre evaluación…"
+            value="${ev.name}"
+            oninput="updateEvalField(${ramoId},${ev.id},'name',this.value)">
+        </div>
+        <div class="eval-pct-wrap">
+          <input class="eval-pct-input" id="epct-${ev.id}" type="number" min="0" max="100" step="0.5"
+            value="${ev.pct || ''}" placeholder="0"
+            oninput="updateEvalPct(${ramoId},${ev.id},this.value)">
+          <span class="eval-pct-symbol">%</span>
+        </div>
+        <div class="eval-grade-wrap">
+          <span class="grade-label">Nota</span>
+          <input class="eval-grade-input" type="number" min="10" max="70" step="1"
+            value="${ev.grade !== null ? ev.grade : ''}" placeholder="—"
+            oninput="updateEvalGrade(${ramoId},${ev.id},this.value)">
+        </div>
+        <div class="eval-actions">
+          <button class="eval-action-btn del" onclick="deleteEval(${ramoId},${ev.id})" title="Eliminar">✕</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildGroupedEvalHTML(ramoId, ev) {
+  return `
+    <div id="eval-group-${ev.id}">
+      <div class="eval-row" style="border-bottom:none;border-radius:8px 8px 0 0;">
+        <div class="eval-type-bar" style="background:#9B59B6;"></div>
+        <div class="eval-content">
+          <div class="eval-name-wrap">
+            <input class="eval-name-input" placeholder="Nombre grupo (ej: Talleres)…"
+              value="${ev.name}"
+              oninput="updateEvalField(${ramoId},${ev.id},'name',this.value);updateGroupLabel(${ramoId},${ev.id})">
+          </div>
+          <div class="eval-pct-wrap">
+            <input class="eval-pct-input" id="epct-${ev.id}" type="number" min="0" max="100" step="0.5"
+              value="${ev.pct || ''}" placeholder="0"
+              oninput="updateEvalPct(${ramoId},${ev.id},this.value)">
+            <span class="eval-pct-symbol">%</span>
+          </div>
+          <div class="eval-grade-wrap" style="min-width:110px;">
+            <span class="grade-label">Promedio</span>
+            <span class="eval-grade-computed" id="group-avg-${ev.id}">—</span>
+          </div>
+          <div class="eval-actions">
+            <button class="eval-action-btn add-s" onclick="addSubEval(${ramoId},${ev.id})" title="Agregar subcontrol" style="font-size:18px;">＋</button>
+            <button class="eval-action-btn del" onclick="deleteEval(${ramoId},${ev.id})" title="Eliminar grupo">✕</button>
+          </div>
+        </div>
+      </div>
+      <div class="sub-items" id="subs-${ev.id}"></div>
+      <div style="padding:4px 12px 8px 12px; background:var(--gray-50); border:1px solid var(--gray-200); border-top:none; border-radius:0 0 8px 8px; display:flex; align-items:center; gap:6px;">
+        <span style="font-size:11px;color:var(--gray-400);" id="sub-info-${ev.id}">Sin subcontroles aún</span>
+      </div>
+    </div>`;
+}
+
+/* ─── SUB-EVAL ─── */
+let subCounter = 0;
+
+function addSubEval(ramoId, evalId) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  const ev   = ramo?.evals.find(e => e.id === evalId);
+  if (!ev) return;
+
+  const sid = ++subCounter;
+  const sub = { id: sid, name: '', grade: null };
+  ev.subs.push(sub);
+
+  const subList = document.getElementById(`subs-${evalId}`);
+  const subEl   = document.createElement('div');
+  subEl.id      = `sub-${sid}`;
+  subEl.innerHTML = buildSubHTML(ramoId, evalId, sub, ev.subs.length);
+  subList.appendChild(subEl);
+
+  recalcSubPcts(ramoId, evalId);
+  updateGroupAvg(ramoId, evalId);
+  updateRamoGrade(ramoId);
+}
+
+function buildSubHTML(ramoId, evalId, sub, idx) {
+  return `
+    <div class="eval-row" style="border-radius:0;border-top:none;" id="sub-row-${sub.id}">
+      <div class="eval-type-bar sub"></div>
+      <div class="eval-content">
+        <div class="eval-name-wrap">
+          <span class="eval-indent" style="color:var(--gray-300); font-size:12px;">└</span>
+          <input class="eval-name-input sub" id="sub-name-${sub.id}"
+            placeholder="Subcontrol ${idx}…" value="${sub.name}"
+            oninput="updateSubField(${ramoId},${evalId},${sub.id},'name',this.value)">
+        </div>
+        <div class="eval-pct-wrap">
+          <span class="eval-pct-input" id="sub-pct-${sub.id}" style="width:44px;text-align:right;font-size:13px;font-weight:600;color:var(--gray-400);font-variant-numeric:tabular-nums;">—</span>
+          <span class="eval-pct-symbol">%</span>
+        </div>
+        <div class="eval-grade-wrap">
+          <span class="grade-label">Nota</span>
+          <input class="eval-grade-input" type="number" min="10" max="70" step="1"
+            value="${sub.grade !== null ? sub.grade : ''}" placeholder="—"
+            oninput="updateSubGrade(${ramoId},${evalId},${sub.id},this.value)">
+        </div>
+        <div class="eval-actions">
+          <button class="eval-action-btn del" onclick="deleteSub(${ramoId},${evalId},${sub.id})" title="Eliminar subcontrol">✕</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function deleteSub(ramoId, evalId, subId) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  const ev   = ramo?.evals.find(e => e.id === evalId);
+  if (!ev) return;
+  ev.subs = ev.subs.filter(s => s.id !== subId);
+  document.getElementById(`sub-${subId}`)?.remove();
+  recalcSubPcts(ramoId, evalId);
+  updateGroupAvg(ramoId, evalId);
+  updateRamoGrade(ramoId);
+}
+
+function recalcSubPcts(ramoId, evalId) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  const ev   = ramo?.evals.find(e => e.id === evalId);
+  if (!ev) return;
+
+  const n = ev.subs.length;
+  const subPct = n > 0 ? (ev.pct / n) : 0;
+
+  ev.subs.forEach(s => {
+    s.pct = subPct;
+    const el = document.getElementById(`sub-pct-${s.id}`);
+    if (el) el.textContent = n > 0 ? fmt1(subPct) : '—';
+  });
+
+  // update info label
+  const info = document.getElementById(`sub-info-${evalId}`);
+  if (info) {
+    if (n === 0) info.textContent = 'Sin subcontroles aún';
+    else info.textContent = `${n} subcontrol${n>1?'es':''} · ${fmt1(subPct)}% cada uno`;
+  }
+}
+
+function updateGroupAvg(ramoId, evalId) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  const ev   = ramo?.evals.find(e => e.id === evalId);
+  if (!ev) return;
+  const withGrades = ev.subs.filter(s => s.grade !== null);
+  const el = document.getElementById(`group-avg-${evalId}`);
+  if (!el) return;
+  if (withGrades.length === 0) { el.textContent = '—'; return; }
+  const avg = withGrades.reduce((a,s)=>a+s.grade,0)/withGrades.length;
+  el.textContent = fmt1(avg);
+  el.style.color = gradeColor(avg);
+}
+
+/* ─── FIELD UPDATES ─── */
+function updateEvalField(ramoId, evalId, field, val) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  const ev   = ramo?.evals.find(e => e.id === evalId);
+  if (ev) ev[field] = val;
+}
+
+function updateEvalPct(ramoId, evalId, val) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  const ev   = ramo?.evals.find(e => e.id === evalId);
+  if (!ev) return;
+  ev.pct = parseFloat(val) || 0;
+  if (ev.type === 'grouped') recalcSubPcts(ramoId, evalId);
+  recalcPcts(ramoId);
+  updateRamoGrade(ramoId);
+}
+
+function updateEvalGrade(ramoId, evalId, val) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  const ev   = ramo?.evals.find(e => e.id === evalId);
+  if (!ev) return;
+  const n = parseFloat(val);
+  ev.grade = isNaN(n) ? null : Math.max(10, Math.min(70, n));
+  updateRamoGrade(ramoId);
+}
+
+function updateSubField(ramoId, evalId, subId, field, val) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  const ev   = ramo?.evals.find(e => e.id === evalId);
+  const sub  = ev?.subs.find(s => s.id === subId);
+  if (sub) sub[field] = val;
+}
+
+function updateSubGrade(ramoId, evalId, subId, val) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  const ev   = ramo?.evals.find(e => e.id === evalId);
+  const sub  = ev?.subs.find(s => s.id === subId);
+  if (!sub) return;
+  const n = parseFloat(val);
+  sub.grade = isNaN(n) ? null : Math.max(10, Math.min(70, n));
+  updateGroupAvg(ramoId, evalId);
+  updateRamoGrade(ramoId);
+}
+
+function recalcPcts(ramoId) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  if (!ramo) return;
+  const total = ramo.evals.reduce((s, e) => s + (e.pct || 0), 0);
+  const warn = document.getElementById(`pct-warn-${ramoId}`);
+  if (!warn) return;
+
+  const diff = Math.abs(total - 100);
+  if (diff < 0.01) {
+    warn.className = 'pct-warning ok show';
+    warn.innerHTML = `✓ Los porcentajes suman exactamente 100%`;
+  } else if (total > 100) {
+    warn.className = 'pct-warning over show';
+    warn.innerHTML = `⚠ Los porcentajes suman ${fmt1(total)}% — exceden el 100% en ${fmt1(total-100)}%`;
+  } else if (total > 0) {
+    warn.className = 'pct-warning under show';
+    warn.innerHTML = `◉ Los porcentajes suman ${fmt1(total)}% — faltan ${fmt1(100-total)}% por asignar`;
+  } else {
+    warn.className = 'pct-warning';
+  }
+}
+
+/* ─── GRADE CALC ─── */
+function updateGroupLabel(ramoId, evalId) { /* placeholder */ }
+
+function updateRamoGrade(ramoId) {
+  const ramo = ramos.find(r => r.id === ramoId);
+  if (!ramo) return;
+
+  let weighted = 0, totalPct = 0;
+
+  ramo.evals.forEach(ev => {
+    const pct = ev.pct || 0;
+    let grade = null;
+
+    if (ev.type === 'simple') {
+      grade = ev.grade;
+    } else {
+      // grouped: average of subs with grades
+      const withGrades = ev.subs.filter(s => s.grade !== null);
+      if (withGrades.length > 0) {
+        grade = withGrades.reduce((a,s)=>a+s.grade,0)/withGrades.length;
+      }
+    }
+
+    if (grade !== null && pct > 0) {
+      weighted += (grade * pct);
+      totalPct += pct;
+    }
+  });
+
+  const badge = document.getElementById(`ramo-badge-${ramoId}`);
+  const card  = document.getElementById(`ramo-${ramoId}`);
+  if (!badge || !card) return;
+
+  if (totalPct === 0) {
+    badge.textContent = '—';
+    badge.className = 'ramo-grade-badge grade-none';
+    card.className = 'ramo-card';
+    updateSidebar();
+    return;
+  }
+
+  const avg = weighted / totalPct;
+  badge.textContent = fmt1(avg);
+
+  const cls = avg >= 55 ? 'grade-pass' : avg >= 40 ? 'grade-warn' : 'grade-fail';
+  badge.className = `ramo-grade-badge ${cls}`;
+
+  card.className = `ramo-card ${avg >= 55 ? 'pass-card' : avg >= 40 ? 'warn-card' : 'fail-card'}`;
+  updateSidebar();
+}
+
+/* ─── SIDEBAR ─── */
+function updateSidebar() {
+  const totalCredits = ramos.reduce((s,r)=>s+(parseInt(r.credits)||0),0);
+  document.getElementById('total-credits').textContent = totalCredits;
+
+  // weighted GPA across ramos
+  let wSum = 0, cSum = 0;
+  ramos.forEach(r => {
+    const grade = getRamoGrade(r);
+    const cred  = parseInt(r.credits)||0;
+    if (grade !== null && cred > 0) {
+      wSum += grade * cred;
+      cSum += cred;
+    }
+  });
+
+  const promEl   = document.getElementById('prom-ponderado');
+  const promCard = document.getElementById('prom-ponderado-card');
+  if (cSum === 0) {
+    promEl.textContent = '—';
+    promCard.className = 'prom-card';
+  } else {
+    const prom = wSum / cSum;
+    promEl.textContent = fmt1(prom);
+    promCard.className = `prom-card ${prom >= 55 ? 'pass' : prom >= 40 ? 'warn' : 'fail'}`;
+  }
+
+  // sidebar list
+  const list = document.getElementById('sidebar-list');
+  list.innerHTML = '';
+  if (ramos.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:16px;"><div>Sin ramos aún</div></div>';
+    return;
+  }
+  ramos.forEach(r => {
+    const grade = getRamoGrade(r);
+    const cls   = grade === null ? 'grade-none' : grade >= 55 ? 'grade-pass' : grade >= 40 ? 'grade-warn' : 'grade-fail';
+    const div = document.createElement('div');
+    div.className = 'sidebar-ramo';
+    div.onclick = () => document.getElementById(`ramo-${r.id}`)?.scrollIntoView({behavior:'smooth',block:'start'});
+    div.innerHTML = `
+      <span class="ramo-name">${r.name || `Ramo ${r.id}`}</span>
+      <span class="ramo-grade ${cls}">${grade !== null ? fmt1(grade) : '—'}</span>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function getRamoGrade(ramo) {
+  let weighted = 0, totalPct = 0;
+  ramo.evals.forEach(ev => {
+    const pct = ev.pct || 0;
+    let grade = null;
+    if (ev.type === 'simple') {
+      grade = ev.grade;
+    } else {
+      const withGrades = ev.subs.filter(s => s.grade !== null);
+      if (withGrades.length > 0) grade = withGrades.reduce((a,s)=>a+s.grade,0)/withGrades.length;
+    }
+    if (grade !== null && pct > 0) { weighted += grade * pct; totalPct += pct; }
+  });
+  return totalPct > 0 ? weighted / totalPct : null;
+}
+
+/* ─── HELPERS ─── */
+function fmt1(n) { return (Math.round(n*10)/10).toFixed(1); }
+
+function gradeColor(n) {
+  return n >= 55 ? 'var(--green)' : n >= 40 ? 'var(--yellow)' : 'var(--red)';
+}
+</script>
+</body>
+</html>
